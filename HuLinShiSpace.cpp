@@ -34,22 +34,60 @@ public:
   void CalcSymCurlShapes (const MappedIntegrationPoint<3,3> & mip,
                           FlatMatrix<double> symcurl_shapes) const    // 14 x 9 matrix
   {
-    symcurl_shapes = 0;
+    Matrix<> sc_shapes1(14,9);
+    CalcSymCurlShapes1 (mip.GetPoint(), sc_shapes1);
+    symcurl_shapes = basistrafo * sc_shapes1;   
   }
 
 
 private:
-  // calc some basis
+  // calc some basis, 14x9 matrix
   void CalcShapes1 (Vec<3> p, FlatMatrix<double> shapes) const
   {
     double x=p(0), y=p(1), z=p(2);
     shapes.Row(0) = Vector ( { 1, 0, 0,  0, 0, 0,  0, 0, 0 } );
     shapes.Row(8) = Vector ( { 0, -z, y,  0, 0, 0,  0, 0, 0 } );
+    // todo
   }
 
+  void CalcSymCurlShapes1 (Vec<3> /* p */, FlatMatrix<double> symcurl_shapes) const
+  {
+    // double x=p(0), y=p(1), z=p(2);
+    
+    symcurl_shapes = 0;
+    symcurl_shapes.Row(8) = Vector ( { 2, 0, 0,  0, 0, 0,  0, 0, 0 } );    
+  }
+
+  
   void CalcBasisTrafo (); // implemented below
 };
 
+
+
+
+
+
+/// Identity operator, covariant transformation
+class DiffOpIdHLS : public DiffOp<DiffOpIdHLS>
+{
+public:
+  enum { DIM = 1 };
+  enum { DIM_SPACE = 3 };
+  enum { DIM_ELEMENT = 3 };
+  enum { DIM_DMAT = 9 };
+  enum { DIFFORDER = 0 };
+  
+  static auto & Cast (const FiniteElement & fel) 
+  { return static_cast<const HLSFiniteElement&> (fel); }
+  
+  template <typename MIP, typename MAT>
+  static void GenerateMatrix (const FiniteElement & fel, 
+                              const MIP & mip,
+                              MAT && mat, LocalHeap & lh)
+  {
+    Cast(fel).CalcShapes (mip, Trans(mat));
+  }
+};
 
 
 
@@ -63,6 +101,8 @@ public:
     : FESpace (ama, flags)
   {
     cout << "Created a Hu-Lin-Shi finite element space for HCurlSym" << endl;
+
+    evaluator[VOL] = make_shared<T_DifferentialOperator<DiffOpIdHLS>>();
   }
   
   string GetClassName () const override { return "HuLinShiFESpace"; }
@@ -132,12 +172,28 @@ public:
 
 
 
+
 void HLSFiniteElement :: CalcBasisTrafo ()
 {
+  Matrix<> shapes1(14, 9);
   for (int e = 0; e < 6; e++)
     {
       auto [t,n1,n2] = space->Get_t_n1_n2(edges[e]);
+      Vec<3> p;  // TODO: global edge mid-point
+      Vec<9> tn1, tn2;
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+          {
+            tn1(3*i+j) = t(i)*n1(j);   // maybe transpose ? 
+            tn1(3*i+j) = t(i)*n2(j);
+          }
+      CalcShapes1 (p, shapes1);
+      basistrafo.Row(2*e)   = shapes1 * tn1;
+      basistrafo.Row(2*e+1) = shapes1 * tn2;
     }
+  // what are dofs 13 and 14 ?
+
+  CalcInverse (basistrafo);
 }
 
 
