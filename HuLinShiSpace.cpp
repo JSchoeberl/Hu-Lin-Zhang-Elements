@@ -45,8 +45,19 @@ private:
   void CalcShapes1 (Vec<3> p, FlatMatrix<double> shapes) const
   {
     double x=p(0), y=p(1), z=p(2);
+    // 8 components of T
     shapes.Row(0) = Vector ( { 1, 0, 0,  0, 0, 0,  0, 0, 0 } );
-    shapes.Row(8) = Vector ( { 0, -z, y,  0, 0, 0,  0, 0, 0 } );
+    shapes.Row(1) = Vector ( { 0, 1, 0,  0, 0, 0,  0, 0, 0 } );    
+    shapes.Row(2) = Vector ( { 0, 0, 1,  0, 0, 0,  0, 0, 0 } );    
+    shapes.Row(3) = Vector ( { 0, 0, 0,  1, 0, 0,  0, 0, 0 } );    
+    shapes.Row(4) = Vector ( { 0, 0, 0,  0, 0, 1,  0, 0, 0 } );    
+    shapes.Row(5) = Vector ( { 0, 0, 0,  0, 0, 0,  1, 0, 0 } );    
+    shapes.Row(6) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 1, 0 } );    
+    shapes.Row(7) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 0, 1 } );    
+
+    // 6 components of S \cross x
+    shapes.Row(8) = Vector ( {  0, -z,  y,  0, 0, 0,   0, 0, 0 } );
+    shapes.Row(9) = Vector ( {  z,  0, -x,  0, -z, y,  0, 0, 0 } );
     // todo
   }
 
@@ -83,7 +94,7 @@ public:
   template <typename MIP, typename MAT>
   static void GenerateMatrix (const FiniteElement & fel, 
                               const MIP & mip,
-                              MAT && mat, LocalHeap & lh)
+                              MAT && mat, LocalHeap & lh)  // mat is Col-major
   {
     Cast(fel).CalcShapes (mip, Trans(mat));
   }
@@ -126,6 +137,27 @@ public:
   {
     // compute edge tangential and normal vectors:
     edge_t.SetSize(ma->GetNEdges());
+    edge_n1.SetSize(ma->GetNEdges());
+    edge_n2.SetSize(ma->GetNEdges());
+
+    for (size_t i = 0; i < ma->GetNEdges(); i++)
+      {
+        auto [v1,v2] = ma->GetEdgePNums(i);
+        Vec<3> p1 = ma->GetPoint<3> (v1);
+        Vec<3> p2 = ma->GetPoint<3> (v2);
+        Vec<3> t = p2-p1;
+        t /= L2Norm(t);
+        Vec<3> n1;
+        if (fabs(t(0)) > 0.5 || fabs(t(1)) > 0.5)
+          n1 = Vec<3> (t(1),-t(0), 0);
+        else
+          n1 = Vec<3> (0, t(2), -t(1));
+        Vec<3> n2 = Cross(t, n1);
+        
+        edge_t[i] = t;
+        edge_n1[i] = n1;
+        edge_n2[i] = n2;
+      }
 
     SetNDof (2*ma->GetNEdges() + 2*ma->GetNE());
   }
