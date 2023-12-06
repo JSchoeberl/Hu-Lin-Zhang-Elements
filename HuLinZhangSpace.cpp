@@ -254,8 +254,8 @@ void HLZFiniteElement :: CalcBasisTrafo ()
       for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
           {
-            tn1(3*i+j) = t(i)*n1(j);   // maybe transpose ? 
-            tn2(3*i+j) = t(i)*n2(j);
+            tn1(3*i+j) = t(j)*n1(i); 
+            tn2(3*i+j) = t(j)*n2(i);
           }
       CalcShapes1 (p, shapes1);
       basistrafo.Row(2*e)   = shapes1 * tn1;
