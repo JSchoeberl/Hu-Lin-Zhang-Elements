@@ -28,7 +28,7 @@ public:
   {
     Matrix<> shapes1(14,9);
     CalcShapes1 (mip.GetPoint(), shapes1);
-    shapes = basistrafo * shapes1;   
+    shapes = Trans(basistrafo) * shapes1;   
   }
 
   void CalcSymCurlShapes (const MappedIntegrationPoint<3,3> & mip,
@@ -36,7 +36,7 @@ public:
   {
     Matrix<> sc_shapes1(14,9);
     CalcSymCurlShapes1 (mip.GetPoint(), sc_shapes1);
-    symcurl_shapes = basistrafo * sc_shapes1;   
+    symcurl_shapes = Trans(basistrafo) * sc_shapes1;   
   }
 
 
@@ -106,6 +106,7 @@ public:
                               MAT && mat, LocalHeap & lh)  // mat is Col-major
   {
     Cast(fel).CalcShapes (mip, Trans(mat));
+    // cout << "diffop mat = " << mat << endl;
   }
 };
 
@@ -195,7 +196,7 @@ public:
         case ET_TET:
           return * new (alloc) HLSFiniteElement(this, Array<int>{ma->GetElement(ei).Edges()});
       default:
-        throw Exception("element type nto implemented");
+        throw Exception("element type not implemented");
       }
   }
 
