@@ -3,19 +3,19 @@
 
 using namespace ngcomp;
 
-class HuLinShiSpace;
-class HLSFiniteElement;
+class HuLinZhangSpace;
+class HLZFiniteElement;
 
 
 
-class HLSFiniteElement : public FiniteElement
+class HLZFiniteElement : public FiniteElement
 {
-  const HuLinShiSpace * space;
+  const HuLinZhangSpace * space;
   Array<int> edges;
   Matrix<> basistrafo{14,14};
   
 public:
-  HLSFiniteElement(const HuLinShiSpace * _space, Array<int> _edges)
+  HLZFiniteElement(const HuLinZhangSpace * _space, Array<int> _edges)
     : FiniteElement(14,1), space{_space}, edges{_edges}
   {
     CalcBasisTrafo();
@@ -89,7 +89,7 @@ private:
 
 
 /// Identity operator, covariant transformation
-class DiffOpIdHLS : public DiffOp<DiffOpIdHLS>
+class DiffOpIdHLZ : public DiffOp<DiffOpIdHLZ>
 {
 public:
   enum { DIM = 1 };
@@ -99,7 +99,7 @@ public:
   enum { DIFFORDER = 0 };
   
   static auto & Cast (const FiniteElement & fel) 
-  { return static_cast<const HLSFiniteElement&> (fel); }
+  { return static_cast<const HLZFiniteElement&> (fel); }
   
   template <typename MIP, typename MAT>
   static void GenerateMatrix (const FiniteElement & fel, 
@@ -112,7 +112,7 @@ public:
 
 
 /// Identity operator, covariant transformation
-class DiffOpSymCurlHLS : public DiffOp<DiffOpSymCurlHLS>
+class DiffOpSymCurlHLZ : public DiffOp<DiffOpSymCurlHLZ>
 {
 public:
   enum { DIM = 1 };
@@ -122,7 +122,7 @@ public:
   enum { DIFFORDER = 1 };
   
   static auto & Cast (const FiniteElement & fel) 
-  { return static_cast<const HLSFiniteElement&> (fel); }
+  { return static_cast<const HLZFiniteElement&> (fel); }
   
   template <typename MIP, typename MAT>
   static void GenerateMatrix (const FiniteElement & fel, 
@@ -135,22 +135,22 @@ public:
 
 
 
-class HuLinShiSpace : public FESpace
+class HuLinZhangSpace : public FESpace
 {
   Array<Vec<3>> edge_t, edge_n1, edge_n2;
   
 public:
-  HuLinShiSpace (shared_ptr<MeshAccess> ama, const Flags & flags)
+  HuLinZhangSpace (shared_ptr<MeshAccess> ama, const Flags & flags)
     : FESpace (ama, flags)
   {
-    cout << "Created a Hu-Lin-Shi finite element space for HCurlSym" << endl;
+    cout << "Created a Hu-Lin-Zhang finite element space for HCurlSym" << endl;
 
-    evaluator[VOL] = make_shared<T_DifferentialOperator<DiffOpIdHLS>>();
-    additional_evaluators.Set ("symcurl",make_shared<T_DifferentialOperator<DiffOpSymCurlHLS>> ());
+    evaluator[VOL] = make_shared<T_DifferentialOperator<DiffOpIdHLZ>>();
+    additional_evaluators.Set ("symcurl",make_shared<T_DifferentialOperator<DiffOpSymCurlHLZ>> ());
     
   }
   
-  string GetClassName () const override { return "HuLinShiFESpace"; }
+  string GetClassName () const override { return "HuLinZhangFESpace"; }
 
   static DocInfo GetDocu()
   {
@@ -218,7 +218,7 @@ public:
     switch (ma->GetElement(ei).GetType())
       {
         case ET_TET:
-          return * new (alloc) HLSFiniteElement(this, Array<int>{ma->GetElement(ei).Edges()});
+          return * new (alloc) HLZFiniteElement(this, Array<int>{ma->GetElement(ei).Edges()});
       default:
         throw Exception("element type not implemented");
       }
@@ -239,7 +239,7 @@ public:
 
 
 
-void HLSFiniteElement :: CalcBasisTrafo ()
+void HLZFiniteElement :: CalcBasisTrafo ()
 {
   Matrix<> shapes1(14, 9);
   const shared_ptr<MeshAccess> & ma = space->GetMeshAccess();
@@ -278,15 +278,15 @@ void HLSFiniteElement :: CalcBasisTrafo ()
 
 
    
-extern "C" void HLSmodule(py::object & res)
+extern "C" void HLZmodule(py::object & res)
 {
-  cout << "imported Hu-Lin-Shi FESpace" << endl;
+  cout << "imported Hu-Lin-Zhang FESpace" << endl;
   auto ngs = py::module::import("ngsolve");    
 
   static py::module::module_def def;    
   py::module m = py::module::create_extension_module("", "", &def);    
     
-  ExportFESpace<HuLinShiSpace>(m, "HuLinShiSpace", true);
+  ExportFESpace<HuLinZhangSpace>(m, "HuLinZhangSpace", true);
   res = m;    
 }    
 
