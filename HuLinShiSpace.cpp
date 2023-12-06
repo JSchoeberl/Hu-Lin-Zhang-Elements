@@ -46,18 +46,22 @@ private:
   {
     double x=p(0), y=p(1), z=p(2);
     // 8 components of T
-    shapes.Row(0) = Vector ( { 1, 0, 0,  0, 0, 0,  0, 0, 0 } );
-    shapes.Row(1) = Vector ( { 0, 1, 0,  0, 0, 0,  0, 0, 0 } );    
-    shapes.Row(2) = Vector ( { 0, 0, 1,  0, 0, 0,  0, 0, 0 } );    
-    shapes.Row(3) = Vector ( { 0, 0, 0,  1, 0, 0,  0, 0, 0 } );    
-    shapes.Row(4) = Vector ( { 0, 0, 0,  0, 0, 1,  0, 0, 0 } );    
-    shapes.Row(5) = Vector ( { 0, 0, 0,  0, 0, 0,  1, 0, 0 } );    
-    shapes.Row(6) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 1, 0 } );    
-    shapes.Row(7) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 0, 1 } );    
+    shapes.Row(0) = Vector ( { 1, 0, 0,  0, -1, 0,  0, 0, 0 } );
+    shapes.Row(1) = Vector ( { 0, 0, 0,  0, -1, 0,  0, 0, 1 } );
+    shapes.Row(2) = Vector ( { 0, 1, 0,  0, 0, 0,  0, 0, 0 } );    
+    shapes.Row(3) = Vector ( { 0, 0, 1,  0, 0, 0,  0, 0, 0 } );    
+    shapes.Row(4) = Vector ( { 0, 0, 0,  1, 0, 0,  0, 0, 0 } );    
+    shapes.Row(5) = Vector ( { 0, 0, 0,  0, 0, 1,  0, 0, 0 } );    
+    shapes.Row(6) = Vector ( { 0, 0, 0,  0, 0, 0,  1, 0, 0 } );    
+    shapes.Row(7) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 1, 0 } );    
 
     // 6 components of S \cross x
-    shapes.Row(8) = Vector ( {  0, -z,  y,  0, 0, 0,   0, 0, 0 } );
-    shapes.Row(9) = Vector ( {  z,  0, -x,  0, -z, y,  0, 0, 0 } );
+    shapes.Row(8)  = Vector ( {  0, -z,  y,    0,  0,  0,    0,  0,  0 } );
+    shapes.Row(9)  = Vector ( {  z,  0, -x,    0, -z,  y,    0,  0,  0 } );
+    shapes.Row(10) = Vector ( { -y,  x,  0,    0,  0,  0,    0, -z,  y } );
+    shapes.Row(11) = Vector ( {  0,  0,  0,   -y,  x,  0,    z,  0, -x } );
+    shapes.Row(12) = Vector ( {  0,  0,  0,    z,  0, -x,    0,  0,  0 } );
+    shapes.Row(13) = Vector ( {  0,  0,  0,    0,  0,  0,   -y,  x,  0 } );
     // todo
   }
 
@@ -66,7 +70,12 @@ private:
     // double x=p(0), y=p(1), z=p(2);
     
     symcurl_shapes = 0;
-    symcurl_shapes.Row(8) = Vector ( { 2, 0, 0,  0, 0, 0,  0, 0, 0 } );    
+    symcurl_shapes.Row(8)  = Vector ( { 2, 0, 0,  0, 0, 0,  0, 0, 0 } );
+    symcurl_shapes.Row(9)  = Vector ( { 0, 2, 0,  2, 0, 0,  0, 0, 0 } );
+    symcurl_shapes.Row(10) = Vector ( { 0, 0, 2,  0, 0, 0,  2, 0, 0 } );
+    symcurl_shapes.Row(11) = Vector ( { 0, 0, 0,  0, 0, 2,  0, 2, 0 } );                
+    symcurl_shapes.Row(12) = Vector ( { 0, 0, 0,  0, 2, 0,  0, 0, 0 } );                
+    symcurl_shapes.Row(13) = Vector ( { 0, 0, 0,  0, 0, 0,  0, 0, 2 } );                
   }
 
   
@@ -208,24 +217,36 @@ public:
 void HLSFiniteElement :: CalcBasisTrafo ()
 {
   Matrix<> shapes1(14, 9);
+  const shared_ptr<MeshAccess> & ma = space->GetMeshAccess();
   for (int e = 0; e < 6; e++)
     {
       auto [t,n1,n2] = space->Get_t_n1_n2(edges[e]);
-      Vec<3> p;  // TODO: global edge mid-point
+
+      auto [v1,v2] = ma->GetEdgePNums(edges[e]);
+      Vec<3> p = 0.5 * (ma->GetPoint<3> (v1) + ma->GetPoint<3> (v2));
+      
       Vec<9> tn1, tn2;
       for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
           {
             tn1(3*i+j) = t(i)*n1(j);   // maybe transpose ? 
-            tn1(3*i+j) = t(i)*n2(j);
+            tn2(3*i+j) = t(i)*n2(j);
           }
       CalcShapes1 (p, shapes1);
       basistrafo.Row(2*e)   = shapes1 * tn1;
       basistrafo.Row(2*e+1) = shapes1 * tn2;
     }
+  
   // what are dofs 13 and 14 ?
+  for (int i = 0; i < 14; i++)
+    {
+      basistrafo(12, i) = sin(i);
+      basistrafo(13, i) = cos(i);
+    }
 
+  // cout << "basistrafo = " << endl << basistrafo << endl;
   CalcInverse (basistrafo);
+  // cout << "basistrafo = " << endl << basistrafo << endl;
 }
 
 
