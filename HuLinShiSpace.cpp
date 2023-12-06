@@ -24,15 +24,16 @@ public:
   ELEMENT_TYPE ElementType() const override { return ET_TET; }
 
   void CalcShapes (const MappedIntegrationPoint<3,3> & mip,
-                   FlatMatrix<double> shapes) const    // 14 x 9 matrix
+                   SliceMatrix<double> shapes) const    // 14 x 9 matrix
   {
     Matrix<> shapes1(14,9);
     CalcShapes1 (mip.GetPoint(), shapes1);
-    shapes = Trans(basistrafo) * shapes1;   
+    shapes = Trans(basistrafo) * shapes1;
+    // cout << "CalcShape, shapes = " << shapes << endl;
   }
 
   void CalcSymCurlShapes (const MappedIntegrationPoint<3,3> & mip,
-                          FlatMatrix<double> symcurl_shapes) const    // 14 x 9 matrix
+                          SliceMatrix<double> symcurl_shapes) const    // 14 x 9 matrix
   {
     Matrix<> sc_shapes1(14,9);
     CalcSymCurlShapes1 (mip.GetPoint(), sc_shapes1);
@@ -106,10 +107,31 @@ public:
                               MAT && mat, LocalHeap & lh)  // mat is Col-major
   {
     Cast(fel).CalcShapes (mip, Trans(mat));
-    // cout << "diffop mat = " << mat << endl;
   }
 };
 
+
+/// Identity operator, covariant transformation
+class DiffOpSymCurlHLS : public DiffOp<DiffOpSymCurlHLS>
+{
+public:
+  enum { DIM = 1 };
+  enum { DIM_SPACE = 3 };
+  enum { DIM_ELEMENT = 3 };
+  enum { DIM_DMAT = 9 };
+  enum { DIFFORDER = 1 };
+  
+  static auto & Cast (const FiniteElement & fel) 
+  { return static_cast<const HLSFiniteElement&> (fel); }
+  
+  template <typename MIP, typename MAT>
+  static void GenerateMatrix (const FiniteElement & fel, 
+                              const MIP & mip,
+                              MAT && mat, LocalHeap & lh)  // mat is Col-major
+  {
+    Cast(fel).CalcSymCurlShapes (mip, Trans(mat));
+  }
+};
 
 
 
@@ -124,6 +146,8 @@ public:
     cout << "Created a Hu-Lin-Shi finite element space for HCurlSym" << endl;
 
     evaluator[VOL] = make_shared<T_DifferentialOperator<DiffOpIdHLS>>();
+    additional_evaluators.Set ("symcurl",make_shared<T_DifferentialOperator<DiffOpSymCurlHLS>> ());
+    
   }
   
   string GetClassName () const override { return "HuLinShiFESpace"; }
